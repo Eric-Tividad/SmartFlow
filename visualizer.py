@@ -17,6 +17,7 @@ import pygame
 import config
 import metrics
 from model import IntersectionModel
+from car_design import CarSprites
 
 # colors
 GRASS_COLOR = (34, 139, 34)
@@ -85,6 +86,10 @@ class Viewer:
         self.paused = False
         self.speed = 1              # how many simulation steps happen per frame
 
+        # car pictures (see car_design.py). car_width is how wide a car is drawn, in pixels
+        self.car_sprites = CarSprites(params["car_length"], 12)
+        self.braking_cars = set()   # ids of the cars whose brake lights are on
+
     # keyboard and simulation
     def handle_events(self, events):
         for event in events:
@@ -105,9 +110,24 @@ class Viewer:
     def update_simulation(self):
         if self.paused == True:
             return
+        speed_before = {}
+        for car in self.model.vehicles:
+            speed_before[car.id] = car.speed
+
         for _ in range(self.speed):
             if self.model.finished == False:
                 self.model.sim_step()
+
+        self.update_brake_lights(speed_before)
+
+    # a car's brake lights are on while it is slowing down or stopped in a queue
+    def update_brake_lights(self, speed_before):
+        self.braking_cars = set()
+        for car in self.model.vehicles:
+            if car.waiting == True:
+                self.braking_cars.add(car.id)
+            elif car.id in speed_before and car.speed < speed_before[car.id] - 0.01:
+                self.braking_cars.add(car.id)
 
     # draws enviroment
     def draw_road(self):
@@ -145,17 +165,11 @@ class Viewer:
         for car in self.model.vehicles:
             x, y = get_car_screen_position(car.direction, car.pos)
 
-            # the longer a car waits, the redder it gets (white -> red)
-            # mababago niyo siguro to since gagawin niyo tong kotse eh
-            redness = car.wait_time / 300
-            if redness > 1:
-                redness = 1
-            green_and_blue_amount = int(255 * (1 - redness))
-            car_color = (255, green_and_blue_amount, green_and_blue_amount)
-
-            radius = car.length // 2
-            pygame.draw.circle(self.screen, car_color, (int(x), int(y)), radius)
-            pygame.draw.circle(self.screen, (0, 0, 0), (int(x), int(y)), radius, 1)
+            # the picture comes from car_design.py. It is already turned the right way
+            braking = car.id in self.braking_cars
+            car_picture = self.car_sprites.get(car.id, car.direction, braking)
+            car_rect = car_picture.get_rect(center=(int(x), int(y)))
+            self.screen.blit(car_picture, car_rect)
 
     # a short info box in the top-left corner
     def draw_info_text(self):
