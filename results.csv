@@ -1,0 +1,19 @@
+scenario,metric,normal,smartflow,change
+"Default traffic (North/South busier)","Average wait",2.8 s,2.3 s,-17%
+"Default traffic (North/South busier)","Longest wait",7.6 s,6.8 s,-11%
+"Default traffic (North/South busier)","Cars that had to stop",71%,73%,+2%
+"Default traffic (North/South busier)","Avg cars waiting",6.3,5.7,-9%
+"Default traffic (North/South busier)","Cars passed in 30 s",66,71,+9%
+"Default traffic (North/South busier)","Time to clear all",42.5 s,39.7 s,-7%
+"Uneven traffic (North/South heavy, East/West light)","Average wait",2.9 s,2.3 s,-21%
+"Uneven traffic (North/South heavy, East/West light)","Longest wait",7.6 s,6.7 s,-13%
+"Uneven traffic (North/South heavy, East/West light)","Cars that had to stop",69%,71%,+3%
+"Uneven traffic (North/South heavy, East/West light)","Avg cars waiting",5.8,5.2,-10%
+"Uneven traffic (North/South heavy, East/West light)","Cars passed in 30 s",56,68,+23%
+"Uneven traffic (North/South heavy, East/West light)","Time to clear all",42.6 s,38.8 s,-9%
+"Even traffic (same in every lane)","Average wait",2.7 s,2.2 s,-21%
+"Even traffic (same in every lane)","Longest wait",7.6 s,6.2 s,-18%
+"Even traffic (same in every lane)","Cars that had to stop",70%,68%,-3%
+"Even traffic (same in every lane)","Avg cars waiting",6.0,5.1,-15%
+"Even traffic (same in every lane)","Cars passed in 30 s",65,65,-1%
+"Even traffic (same in every lane)","Time to clear all",41.6 s,39.0 s,-6%
