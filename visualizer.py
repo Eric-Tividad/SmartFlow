@@ -17,24 +17,17 @@ import pygame
 import config
 import metrics
 from model import IntersectionModel
-from car_design import CarSprites
+from designs import CarSprites, TrafficLightSprites, Environment, SIDEWALK_WIDTH
 
-# colors
-GRASS_COLOR = (34, 139, 34)
-ROAD_COLOR = (60, 60, 60)
-LINE_COLOR = (230, 230, 230)
-LIGHT_COLORS = {
-    "green": (0, 220, 0),
-    "yellow": (240, 200, 0),
-    "red": (220, 0, 0),
-}
-
-# where each direction's traffic light is drawn (the corners of the intersection)
+# where each direction's traffic light is drawn: on the sidewalk, a bit before the stop line
+# (the sidewalk is drawn in designs.py, the Environment section)
+LIGHT_MIDDLE = SIDEWALK_WIDTH // 2      # the middle of the sidewalk
+LIGHT_END_GAP = 26                      # how far the light is from the intersection, along the road
 LIGHT_POSITIONS = {
-    "N": (config.CENTER - config.HALF_ROAD - 14, config.CENTER - config.HALF_ROAD - 14),
-    "S": (config.CENTER + config.HALF_ROAD + 14, config.CENTER + config.HALF_ROAD + 14),
-    "E": (config.CENTER + config.HALF_ROAD + 14, config.CENTER - config.HALF_ROAD - 14),
-    "W": (config.CENTER - config.HALF_ROAD - 14, config.CENTER + config.HALF_ROAD + 14),
+    "N": (config.CENTER - config.HALF_ROAD - LIGHT_MIDDLE, config.CENTER - config.HALF_ROAD - LIGHT_END_GAP),
+    "S": (config.CENTER + config.HALF_ROAD + LIGHT_MIDDLE, config.CENTER + config.HALF_ROAD + LIGHT_END_GAP),
+    "E": (config.CENTER + config.HALF_ROAD + LIGHT_END_GAP, config.CENTER - config.HALF_ROAD - LIGHT_MIDDLE),
+    "W": (config.CENTER - config.HALF_ROAD - LIGHT_END_GAP, config.CENTER + config.HALF_ROAD + LIGHT_MIDDLE),
 }
 
 # turns (direction, distance along the lane) into an x and y on the screen
@@ -86,8 +79,10 @@ class Viewer:
         self.paused = False
         self.speed = 1              # how many simulation steps happen per frame
 
-        # car pictures (see car_design.py). car_width is how wide a car is drawn, in pixels
+        # pictures (see designs.py). The 12 is how wide a car is drawn, in pixels
         self.car_sprites = CarSprites(params["car_length"], 12)
+        self.light_sprites = TrafficLightSprites()
+        self.environment = Environment()     # the ground, buildings, trees, people (see designs.py)
         self.braking_cars = set()   # ids of the cars whose brake lights are on
 
     # keyboard and simulation
@@ -129,43 +124,20 @@ class Viewer:
             elif car.id in speed_before and car.speed < speed_before[car.id] - 0.01:
                 self.braking_cars.add(car.id)
 
-    # draws enviroment
-    def draw_road(self):
-        center = config.CENTER
-        half = config.HALF_ROAD
-        size = config.SCREEN_SIZE
-
-        # grass background, then the two roads
-        self.screen.fill(GRASS_COLOR)
-        pygame.draw.rect(self.screen, ROAD_COLOR, (center - half, 0, 2 * half, size))
-        pygame.draw.rect(self.screen, ROAD_COLOR, (0, center - half, size, 2 * half))
-
-        # dashed center lines (skipped inside the intersection box)
-        for spot in range(0, size, 30):
-            inside_intersection = (spot >= center - half and spot <= center + half)
-            if inside_intersection == False:
-                pygame.draw.line(self.screen, LINE_COLOR, (center, spot), (center, spot + 15), 2)
-                pygame.draw.line(self.screen, LINE_COLOR, (spot, center), (spot + 15, center), 2)
-
-        # stop lines, one for each direction
-        pygame.draw.line(self.screen, LINE_COLOR, (center - half, center - half), (center, center - half), 4)   # North
-        pygame.draw.line(self.screen, LINE_COLOR, (center, center + half), (center + half, center + half), 4)   # South
-        pygame.draw.line(self.screen, LINE_COLOR, (center + half, center - half), (center + half, center), 4)   # East
-        pygame.draw.line(self.screen, LINE_COLOR, (center - half, center), (center - half, center + half), 4)   # West
-
     def draw_lights(self):
         for direction in config.DIRECTIONS:
             light_state = self.model.controller.state(direction)
-            light_color = LIGHT_COLORS[light_state]
-            light_position = LIGHT_POSITIONS[direction]
-            pygame.draw.circle(self.screen, (20, 20, 20), light_position, 11)
-            pygame.draw.circle(self.screen, light_color, light_position, 8)
+
+            # the picture comes from designs.py, it is centered on the light's position
+            light_picture = self.light_sprites.get(light_state, direction)
+            light_rect = light_picture.get_rect(center=LIGHT_POSITIONS[direction])
+            self.screen.blit(light_picture, light_rect)
 
     def draw_cars(self):
         for car in self.model.vehicles:
             x, y = get_car_screen_position(car.direction, car.pos)
 
-            # the picture comes from car_design.py. It is already turned the right way
+            # the picture comes from designs.py. It is already turned the right way
             braking = car.id in self.braking_cars
             car_picture = self.car_sprites.get(car.id, car.direction, braking)
             car_rect = car_picture.get_rect(center=(int(x), int(y)))
@@ -209,9 +181,13 @@ class Viewer:
         self.screen.blit(controls_image, (8, config.SCREEN_SIZE - 26))
 
     def draw_simulation(self):
-        self.draw_road()
+        # the moving things in the town use the real clock, so they keep moving even when paused
+        now = pygame.time.get_ticks() / 1000
+
+        self.environment.draw_ground(self.screen, now)      # ground, roads, buildings, people (designs.py)
         self.draw_lights()
         self.draw_cars()
+        self.environment.draw_overhead(self.screen, now)    # the tree tops, above the cars
         self.draw_info_text()
 
     # main loop
